@@ -1127,6 +1127,9 @@ static __isl_give isl_ast_graft *set_for_node_expressions(
 
 	node = graft->node;
 	node->u.f.init = reduce_list(isl_ast_expr_op_max, lower, build);
+	printf("[ZSY_DEBUG] depth = %d *************************\n", isl_ast_build_get_depth(build));
+	isl_set_dump(build->domain);
+	isl_schedule_node_dump(build->node);
 	node->u.f.inc = for_inc(build);
 
 	if (!node->u.f.init || !node->u.f.inc)

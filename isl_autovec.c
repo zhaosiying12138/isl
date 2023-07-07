@@ -214,6 +214,179 @@ int zsy_test_autovec(isl_ctx *ctx)
 	return 0;
 }
 
+int zsy_test_schedule_tree1(isl_ctx *ctx)
+{
+	const char *d;
+	isl_union_set *D;
+	isl_schedule_node *node;
+	isl_schedule *sched;
+	const char *str;
+	isl_multi_union_pw_aff *mupa;
+	isl_union_set *uset;
+	isl_union_set_list *filters;
+	isl_ast_build *build;
+	isl_ast_node *tree;
+
+	d = "[N] -> { S1[i] : 1 <= i <= 100; S2[i, j] : 1 <= i, j <= 100; "
+					" S3[i, j, k, l] : 1 <= i, j, k, l <= 100; S4[i, j] : 1 <= i, j <= 100 } ";
+	D = isl_union_set_read_from_str(ctx, d);
+	node = isl_schedule_node_from_domain(D);
+	node = isl_schedule_node_child(node, 0);
+
+	str = "[N] -> [{ S1[i] -> [i]; S2[i, j] -> [i]; S3[i, j, k, l] -> [i]; S4[i, j] -> [i] }]";
+	mupa = isl_multi_union_pw_aff_read_from_str(ctx, str);
+	node = isl_schedule_node_insert_partial_schedule(node, mupa);
+	node = isl_schedule_node_band_set_permutable(node, 0);
+	node = isl_schedule_node_band_member_set_coincident(node, 0, 0);
+	node = isl_schedule_node_child(node, 0);
+
+	str = "{ S1[i] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_from_union_set(uset);
+	str = "{ S2[i, j]; S3[i, j, k, l]; S4[i, j] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_add(filters, uset);
+	node = isl_schedule_node_insert_sequence(node, filters);
+	node = isl_schedule_node_grandchild(node, 1, 0);
+
+	str = "[N] -> [{ S2[i, j] -> [j]; S3[i, j, k, l] -> [j]; S4[i, j] -> [j] }]";
+	mupa = isl_multi_union_pw_aff_read_from_str(ctx, str);
+	node = isl_schedule_node_insert_partial_schedule(node, mupa);
+	node = isl_schedule_node_band_set_permutable(node, 0);
+	node = isl_schedule_node_band_member_set_coincident(node, 0, 0);
+	node = isl_schedule_node_child(node, 0);
+
+	str = "{ S2[i, j] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_from_union_set(uset);
+	str = "{ S3[i, j, k, l] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_add(filters, uset);
+	str = "{ S4[i, j] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_add(filters, uset);
+	node = isl_schedule_node_insert_sequence(node, filters);
+	node = isl_schedule_node_grandchild(node, 1, 0);
+
+	str = "[N] -> [{ S3[i, j, k, l] -> [k] }, { S3[i, j, k, l] -> [l] }]";
+	mupa = isl_multi_union_pw_aff_read_from_str(ctx, str);
+	node = isl_schedule_node_insert_partial_schedule(node, mupa);
+	node = isl_schedule_node_band_set_permutable(node, 0);
+	node = isl_schedule_node_band_member_set_coincident(node, 0, 0);
+	node = isl_schedule_node_child(node, 0);
+
+	node = isl_schedule_node_root(node);
+	sched = isl_schedule_node_get_schedule(node);
+	printf("Before Transform:\n");
+	isl_schedule_dump(sched);
+	build = isl_ast_build_from_context(isl_set_read_from_str(ctx, "{ : }"));
+	tree = isl_ast_build_node_from_schedule(build, sched);
+	printf("\n\n%s\n", isl_ast_node_to_C_str(tree));
+
+	return 0;
+}
+
+int zsy_test_schedule_tree2(isl_ctx *ctx)
+{
+	const char *d;
+	isl_union_set *D;
+	isl_schedule_node *node;
+	isl_schedule *sched;
+	const char *str;
+	isl_multi_union_pw_aff *mupa;
+	isl_union_set *uset;
+	isl_union_set_list *filters;
+	isl_ast_build *build;
+	isl_ast_node *tree;
+
+	d = "[N] -> { S1[i] : 1 <= i <= 100; S2[i, j] : 1 <= i, j <= 100; "
+					" S3[i, j, k, l] : 1 <= i, j, k, l <= 100; S4[i, j] : 1 <= i, j <= 100 } ";
+	D = isl_union_set_read_from_str(ctx, d);
+	node = isl_schedule_node_from_domain(D);
+	node = isl_schedule_node_child(node, 0);
+
+	str = "{ S2[i, j]; S3[i, j, k, l]; S4[i, j] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_from_union_set(uset);
+	str = "{ S1[i] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_add(filters, uset);
+	node = isl_schedule_node_insert_sequence(node, filters);
+
+	node = isl_schedule_node_grandchild(node, 0, 0);
+	str = "[N] -> [{ S2[i, j] -> [i]; S3[i, j, k, l] -> [i]; S4[i, j] -> [i] }]";
+	mupa = isl_multi_union_pw_aff_read_from_str(ctx, str);
+	node = isl_schedule_node_insert_partial_schedule(node, mupa);
+	node = isl_schedule_node_band_set_permutable(node, 0);
+	node = isl_schedule_node_band_member_set_coincident(node, 0, 0);
+//	node = isl_schedule_node_insert_mark(node, (void *)0x12138);
+	node = isl_schedule_node_grandparent(node);
+
+	node = isl_schedule_node_grandchild(node, 1, 0);
+	str = "[N] -> [{ S1[i] -> [i] }]";
+	mupa = isl_multi_union_pw_aff_read_from_str(ctx, str);
+	node = isl_schedule_node_insert_partial_schedule(node, mupa);
+	node = isl_schedule_node_band_set_permutable(node, 1);
+	node = isl_schedule_node_band_member_set_coincident(node, 0, 1);
+	node = isl_schedule_node_grandparent(node);
+
+	node = isl_schedule_node_grandchild(node, 0, 0);
+	node = isl_schedule_node_child(node, 0);
+	str = "{ S2[i, j]; S3[i, j, k, l] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_from_union_set(uset);
+	str = "{ S4[i, j] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_add(filters, uset);
+	node = isl_schedule_node_insert_sequence(node, filters);
+
+	node = isl_schedule_node_grandchild(node, 0, 0);
+	str = "[N] -> [{ S2[i, j] -> [j]; S3[i, j, k, l] -> [j] }]";
+	mupa = isl_multi_union_pw_aff_read_from_str(ctx, str);
+	node = isl_schedule_node_insert_partial_schedule(node, mupa);
+	node = isl_schedule_node_band_set_permutable(node, 0);
+	node = isl_schedule_node_band_member_set_coincident(node, 0, 0);
+	node = isl_schedule_node_grandparent(node);
+
+	node = isl_schedule_node_grandchild(node, 1, 0);
+	str = "[N] -> [{ S4[i, j] -> [j] }]";
+	mupa = isl_multi_union_pw_aff_read_from_str(ctx, str);
+	node = isl_schedule_node_insert_partial_schedule(node, mupa);
+	node = isl_schedule_node_band_set_permutable(node, 1);
+	node = isl_schedule_node_band_member_set_coincident(node, 0, 1);
+	node = isl_schedule_node_grandparent(node);
+
+	node = isl_schedule_node_grandchild(node, 0, 0);
+	node = isl_schedule_node_child(node, 0);
+	str = "{ S2[i, j] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_from_union_set(uset);
+	str = "{ S3[i, j, k, l] }";
+	uset = isl_union_set_read_from_str(ctx, str);
+	filters = isl_union_set_list_add(filters, uset);
+	node = isl_schedule_node_insert_sequence(node, filters);
+
+	node = isl_schedule_node_grandchild(node, 1, 0);
+	str = "[N] -> [{ S3[i, j, k, l] -> [k] }, { S3[i, j, k, l] -> [l] }]";
+	mupa = isl_multi_union_pw_aff_read_from_str(ctx, str);
+	node = isl_schedule_node_insert_partial_schedule(node, mupa);
+	node = isl_schedule_node_band_set_permutable(node, 1);
+	node = isl_schedule_node_band_member_set_coincident(node, 0, 1);
+	node = isl_schedule_node_band_member_set_coincident(node, 1, 1);
+	node = isl_schedule_node_grandparent(node);
+
+	node = isl_schedule_node_root(node);
+	sched = isl_schedule_node_get_schedule(node);
+	printf("\n\nAfter Transform:\n");
+	isl_schedule_dump(sched);
+	build = isl_ast_build_from_context(isl_set_read_from_str(ctx, "{ : }"));
+	tree = isl_ast_build_node_from_schedule(build, sched);
+//	isl_ast_node_dump(tree);
+	printf("\n\n%s\n", isl_ast_node_to_C_str(tree));
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -227,7 +400,9 @@ int main(int argc, char **argv)
 
 	printf("AutoVectorization written by zhaosiying12138@Institute of Advanced YanJia"
 				" Technology, LiuYueCity Academy of Science\n");
-	zsy_test_autovec(ctx);
+//	zsy_test_autovec(ctx);
+//	zsy_test_schedule_tree1(ctx);
+	zsy_test_schedule_tree2(ctx);
 
 	isl_ctx_free(ctx);
 	return 0;
