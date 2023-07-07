@@ -68,6 +68,7 @@ struct isl_ast_node {
 		} i;
 		struct {
 			unsigned degenerate : 1;
+			unsigned parallel : 1;
 			isl_ast_expr *iterator;
 			isl_ast_expr *init;
 			isl_ast_expr *cond;

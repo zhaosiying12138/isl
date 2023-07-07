@@ -1054,6 +1054,7 @@ __isl_give isl_ast_node *isl_ast_node_dup(__isl_keep isl_ast_node *node)
 			break;
 		dup->u.f.cond = isl_ast_expr_copy(node->u.f.cond);
 		dup->u.f.inc = isl_ast_expr_copy(node->u.f.inc);
+		dup->u.f.parallel = node->u.f.parallel;
 		if (!dup->u.f.cond || !dup->u.f.inc)
 			return isl_ast_node_free(dup);
 		break;
@@ -2398,7 +2399,10 @@ static __isl_give isl_printer *print_for_c(__isl_take isl_printer *p,
 		name = isl_id_get_name(id);
 		isl_id_free(id);
 		p = isl_printer_start_line(p);
-		p = isl_printer_print_str(p, "for (");
+		if (node->u.f.parallel)
+			p = isl_printer_print_str(p, "parallel_for (");
+		else
+			p = isl_printer_print_str(p, "serial_for (");
 		p = isl_printer_print_str(p, type);
 		p = isl_printer_print_str(p, " ");
 		p = isl_printer_print_str(p, name);

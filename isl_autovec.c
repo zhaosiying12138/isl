@@ -299,8 +299,8 @@ int zsy_test_schedule_tree2(isl_ctx *ctx)
 	isl_ast_build *build;
 	isl_ast_node *tree;
 
-	d = "[N] -> { S1[i] : 1 <= i <= 100; S2[i, j] : 1 <= i, j <= 100; "
-					" S3[i, j, k, l] : 1 <= i, j, k, l <= 100; S4[i, j] : 1 <= i, j <= 100 } ";
+	d = "[N] -> { S1[i] : 1 <= i <= 100; S2[i, j] : 1 <= i <= 100 and 1 <= j <= 200; "
+					" S3[i, j, k, l] : 1 <= i <= 100 and 1 <= j <= 200 and 1 <= k <= 300 and 1 <= l <= 400; S4[i, j] : 1 <= i <= 100 and 1 <= j <= 200 } ";
 	D = isl_union_set_read_from_str(ctx, d);
 	node = isl_schedule_node_from_domain(D);
 	node = isl_schedule_node_child(node, 0);
@@ -401,7 +401,7 @@ int main(int argc, char **argv)
 	printf("AutoVectorization written by zhaosiying12138@Institute of Advanced YanJia"
 				" Technology, LiuYueCity Academy of Science\n");
 //	zsy_test_autovec(ctx);
-//	zsy_test_schedule_tree1(ctx);
+	zsy_test_schedule_tree1(ctx);
 	zsy_test_schedule_tree2(ctx);
 
 	isl_ctx_free(ctx);
