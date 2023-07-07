@@ -1128,7 +1128,11 @@ static __isl_give isl_ast_graft *set_for_node_expressions(
 	node = graft->node;
 	node->u.f.init = reduce_list(isl_ast_expr_op_max, lower, build);
 	node->u.f.inc = for_inc(build);
-	node->u.f.parallel = isl_schedule_node_band_get_permutable(build->node);
+
+	int band_n = isl_schedule_node_band_n_member(build->node);
+	int build_dim = isl_ast_build_dim(build, isl_dim_set);
+	int build_depth = isl_ast_build_get_depth(build);
+	node->u.f.parallel = isl_schedule_node_band_member_get_coincident(build->node, band_n - build_dim + build_depth);
 
 	if (!node->u.f.init || !node->u.f.inc)
 		graft = isl_ast_graft_free(graft);
