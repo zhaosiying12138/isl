@@ -186,12 +186,12 @@ int zsy_test_space_partition_Quillere_step1(isl_ctx *ctx)
 
 	domain[0] = isl_set_read_from_str(ctx, domain_str[0]);
 	domain[1] = isl_set_read_from_str(ctx, domain_str[1]);
-	domain_name_str[0] = isl_set_get_tuple_name(domain[0]);
-	domain_name_str[1] = isl_set_get_tuple_name(domain[1]);
 	trans[0] = isl_map_read_from_str(ctx, trans_str[0]);
 	trans[1] = isl_map_read_from_str(ctx, trans_str[1]);
 	schedule_orig = isl_union_map_read_from_str(ctx, schedule_orig_str);
 
+	domain_name_str[0] = isl_set_get_tuple_name(domain[0]);
+	domain_name_str[1] = isl_set_get_tuple_name(domain[1]);
 	trans[0] = isl_map_set_tuple_name(trans[0], isl_dim_out, domain_name_str[0]);
 	trans[1] = isl_map_set_tuple_name(trans[1], isl_dim_out, domain_name_str[1]);
 	domain_trans[0] = isl_set_apply(domain[0], trans[0]);
@@ -237,7 +237,6 @@ int zsy_test_space_partition_Quillere_step1(isl_ctx *ctx)
 	tmp_split_sched[1] = isl_union_map_intersect_domain(tmp_split_sched[1], isl_union_set_copy(tmp_split_domain[1]));
 	tmp_split_sched[2] = isl_union_map_intersect_domain(tmp_split_sched[2], isl_union_set_copy(tmp_split_domain[2]));
 
-
 	zsy_codegen(tmp_split_sched[0]);
 	zsy_codegen(tmp_split_sched[1]);
 	zsy_codegen(tmp_split_sched[2]);
@@ -266,12 +265,12 @@ int zsy_test_space_partition_Quillere_step2(isl_ctx *ctx)
 
 	domain[0] = isl_set_read_from_str(ctx, domain_str[0]);
 	domain[1] = isl_set_read_from_str(ctx, domain_str[1]);
-	domain_name_str[0] = isl_set_get_tuple_name(domain[0]);
-	domain_name_str[1] = isl_set_get_tuple_name(domain[1]);
 	trans[0] = isl_map_read_from_str(ctx, trans_str[0]);
 	trans[1] = isl_map_read_from_str(ctx, trans_str[1]);
 	schedule_orig = isl_union_map_read_from_str(ctx, schedule_orig_str);
 
+	domain_name_str[0] = isl_set_get_tuple_name(domain[0]);
+	domain_name_str[1] = isl_set_get_tuple_name(domain[1]);
 	trans[0] = isl_map_set_tuple_name(trans[0], isl_dim_out, domain_name_str[0]);
 	trans[1] = isl_map_set_tuple_name(trans[1], isl_dim_out, domain_name_str[1]);
 	domain_trans[0] = isl_set_apply(domain[0], trans[0]);
