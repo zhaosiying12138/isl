@@ -2958,6 +2958,7 @@ static __isl_give isl_vec *extract_var_coef(struct isl_sched_node *node,
  * If coincident is set, then the caller guarantees that the new
  * row satisfies the coincidence constraints.
  */
+static __isl_give isl_map *node_extract_schedule(struct isl_sched_node *node);
 static int update_schedule(struct isl_sched_graph *graph,
 	__isl_take isl_vec *sol, int coincident)
 {
@@ -2999,6 +3000,7 @@ static int update_schedule(struct isl_sched_graph *graph,
 			node->sched = isl_mat_set_element(node->sched,
 					row, 1 + node->nparam + j, csol->el[j]);
 		node->coincident[graph->n_total_row] = coincident;
+		isl_map_dump(node_extract_schedule(node));
 	}
 	isl_vec_free(sol);
 	isl_vec_free(csol);
