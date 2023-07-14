@@ -32,12 +32,11 @@
 #include <isl_ast_build_expr.h>
 #include <isl/options.h>
 
-int zsy_spacepar_sched(isl_ctx *ctx)
+int zsy_spacepar_compute_schedule(isl_ctx *ctx)
 {
 	const char *d, *w, *r, *s, *con;
 	isl_set *CON;
-	isl_union_set *D, *delta;
-	isl_set *delta_set, *delta_set_lexmin, *delta_set_lexmax;
+	isl_union_set *D;
 	isl_union_map *W, *R, *S;
 	isl_union_map *empty;
 	isl_union_map *dep_raw, *dep_war, *dep_waw, *dep, *dep_rev;
@@ -49,9 +48,10 @@ int zsy_spacepar_sched(isl_ctx *ctx)
 	con = "{ : }";
 	d = "{ S1[i, j] : 1 <= i <= 100 and 1 <= j <= 100; S2[i, j] : 1 <= i <= 100 and 1 <= j <= 100 }";
 	w = "{ S1[i, j] -> X[i, j]; S2[i, j] -> Y[i, j] }";
-	r = "{ S1[i, j] -> X[i, j]; S1[i, j] -> Y[i-1, j]; S2[i, j] -> Y[i, j]; S2[i, j] -> X[i, j-1] }";
-	s = "{ S1[i, j] -> [i - j - 1, 0, i, 0, j, 0]; S2[i, j] -> [i - j, 0, i, 0, j, 1] }";
+	r = "{ S1[i, j] -> X[i, j]; S1[i, j] -> Y[i - 1, j]; S2[i, j] -> Y[i, j]; S2[i, j] -> X[i, j - 1] }";
+	s = "{ S1[i, j] -> [0, i, 0, j, 0]; S2[i, j] -> [0, i, 0, j, 1] }";
 
+	printf("\nCompute schedule for Space-Partition-Constraints Demo:\n");
 	CON = isl_set_read_from_str(ctx, con);
 	D = isl_union_set_read_from_str(ctx, d);
 	W = isl_union_map_read_from_str(ctx, w);
@@ -94,6 +94,36 @@ int zsy_spacepar_sched(isl_ctx *ctx)
 	return 0;
 }
 
+int zsy_spacepar_isl_codegen(isl_ctx *ctx)
+{
+	const char *d, *s, *con;
+	isl_set *CON;
+	isl_union_set *D;
+	isl_union_map *S;
+	isl_schedule *sched;
+	isl_ast_build *build;
+	isl_ast_node *tree;
+
+	con = "{ : }";
+	d = "{ S1[i, j] : 1 <= i <= 100 and 1 <= j <= 100; S2[i, j] : 1 <= i <= 100 and 1 <= j <= 100 }";
+	s = "{ S1[i, j] -> [i - j - 1, 0, i, 0, j, 0]; S2[i, j] -> [i - j, 0, i, 0, j, 1] }";
+
+	printf("Codegen with ISL-native-ast-build:\n");
+	CON = isl_set_read_from_str(ctx, con);
+	D = isl_union_set_read_from_str(ctx, d);
+	S = isl_union_map_read_from_str(ctx, s);
+	S = isl_union_map_intersect_domain(S, D);
+
+	build = isl_ast_build_from_context(CON);
+	tree = isl_ast_build_node_from_schedule_map(build, S);
+	printf("%s\n", isl_ast_node_to_C_str(tree));
+
+	isl_ast_node_free(tree);
+	isl_ast_build_free(build);
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -107,8 +137,8 @@ int main(int argc, char **argv)
 
 	printf("Space-Partition-Demo by zhaosiying12138@Institute of Advanced YanJia"
 				" Technology, LiuYueCity Academy of Science\n");
-	zsy_spacepar_sched(ctx);
-
+	zsy_spacepar_compute_schedule(ctx);
+	zsy_spacepar_isl_codegen(ctx);
 	isl_ctx_free(ctx);
 	return 0;
 error:
