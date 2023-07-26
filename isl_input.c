@@ -277,22 +277,36 @@ error:
 	return isl_stat_error;
 }
 
-static isl_stat accept_cst_factor(__isl_keep isl_stream *s, isl_int *f)
+static isl_stat accept_cst_factor(__isl_keep isl_stream *s, isl_int *f, struct vars *v)
 {
 	struct isl_token *tok;
 
 	tok = next_token(s);
+	if (tok->type == ISL_TOKEN_IDENT) {
+		int n_params = v->n_params;
+		int pos = vars_pos(v, tok->u.s, -1);
+		printf("pos = %d, v->n = %d, v->n_params = %d\n", pos, v->n, v->n_params);
+		if (pos < n_params) {
+			tok->type = ISL_TOKEN_VALUE;
+			isl_int_init(tok->u.v);
+			isl_int_set_si(tok->u.v, 1);
+			isl_int_set_param(tok->u.v, pos, 5);
+		}
+	}
+
+
 	if (!tok || tok->type != ISL_TOKEN_VALUE) {
 		isl_stream_error(s, tok, "expecting constant value3");
 		goto error;
 	}
 
 	isl_int_mul(*f, *f, tok->u.v);
+	printf("[ZSYsss] %d\n", (*f)->hehe[0]);
 
 	isl_token_free(tok);
 
 	if (isl_stream_eat_if_available(s, '*'))
-		return accept_cst_factor(s, f);
+		return accept_cst_factor(s, f, v);
 
 	return isl_stat_ok;
 error:
@@ -471,7 +485,7 @@ static __isl_give isl_pw_aff *pw_aff_div_by_cst(__isl_keep isl_stream *s,
 	isl_int f;
 	isl_int_init(f);
 	isl_int_set_si(f, 1);
-	if (accept_cst_factor(s, &f) < 0)
+	if (accept_cst_factor(s, &f, NULL) < 0)
 		pa = isl_pw_aff_free(pa);
 	pa = isl_pw_aff_scale_down(pa, f);
 	isl_int_clear(f);
@@ -491,13 +505,24 @@ static __isl_give isl_pw_aff *accept_affine_factor(__isl_keep isl_stream *s,
 		goto error;
 	}
 
+	if (tok->type == ISL_TOKEN_IDENT) {
+		int n_params = v->n_params;
+		int pos = vars_pos(v, tok->u.s, -1);
+		printf("pos = %d, v->n = %d, v->n_params = %d\n", pos, v->n, v->n_params);
+		if (pos < n_params) {
+			tok->type = ISL_TOKEN_VALUE;
+			isl_int_init(tok->u.v);
+			isl_int_set_si(tok->u.v, 1);
+			isl_int_set_param(tok->u.v, pos, 5);
+		}
+	}
+
 	if (tok->type == ISL_TOKEN_AFF) {
 		res = isl_pw_aff_copy(tok->u.pwaff);
 		isl_token_free(tok);
 	} else if (tok->type == ISL_TOKEN_IDENT) {
 		int n = v->n;
 		int pos = vars_pos(v, tok->u.s, -1);
-		printf("pos = %d, v->n = %d, v->n_params = %d\n", pos, v->n, v->n_params);
 		isl_aff *aff;
 
 		if (pos < 0)
@@ -509,17 +534,20 @@ static __isl_give isl_pw_aff *accept_affine_factor(__isl_keep isl_stream *s,
 		}
 
 		aff = isl_aff_zero_on_domain(isl_local_space_from_space(isl_space_copy(space)));
+		isl_space_dump(space);
 		if (!aff)
 			goto error;
 		aff->v = isl_vec_set_element_si(aff->v, 2 + pos, 1);
 		if (!aff->v)
 			aff = isl_aff_free(aff);
 		res = isl_pw_aff_from_aff(aff);
+		//isl_pw_aff_dump(res);
 		isl_token_free(tok);
 	} else if (tok->type == ISL_TOKEN_VALUE) {
 		if (isl_stream_eat_if_available(s, '*')) {
 			res = accept_affine_factor(s, isl_space_copy(space), v);
 			res = isl_pw_aff_scale(res, tok->u.v);
+			//isl_pw_aff_dump(res);
 		} else {
 			isl_local_space *ls;
 			isl_aff *aff;
@@ -558,10 +586,11 @@ static __isl_give isl_pw_aff *accept_affine_factor(__isl_keep isl_stream *s,
 		isl_int f;
 		isl_int_init(f);
 		isl_int_set_si(f, 1);
-		if (accept_cst_factor(s, &f) < 0) {
+		if (accept_cst_factor(s, &f, v) < 0) {
 			isl_int_clear(f);
 			goto error2;
 		}
+//		isl_pw_aff_dump(res);
 		res = isl_pw_aff_scale(res, f);
 		isl_int_clear(f);
 	}
@@ -637,6 +666,8 @@ static __isl_give isl_pw_aff *accept_affine(__isl_keep isl_stream *s,
 				res = isl_pw_aff_sub(res, term);
 			else
 				res = isl_pw_aff_add(res, term);
+			printf("aaaaaaaaaa\n");
+			isl_pw_aff_dump(res);
 			if (!res)
 				goto error;
 			sign = 1;

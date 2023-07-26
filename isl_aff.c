@@ -1859,6 +1859,10 @@ static __isl_give isl_aff *add_expanded(__isl_take isl_aff *aff1,
 	if (!aff1->v)
 		goto error;
 
+	isl_seq_add(aff1->v->el + 1, aff1->v->el + 1, aff2->v->el + 1, aff1->v->size - 1);
+
+	//isl_aff_dump(aff1);
+#if 0
 	isl_int_init(gcd);
 	isl_int_init(f);
 	isl_int_gcd(gcd, aff1->v->el[0], aff2->v->el[0]);
@@ -1873,6 +1877,7 @@ static __isl_give isl_aff *add_expanded(__isl_take isl_aff *aff1,
 
 	isl_aff_free(aff2);
 	aff1 = isl_aff_normalize(aff1);
+#endif
 	return aff1;
 error:
 	isl_aff_free(aff1);
@@ -1974,6 +1979,12 @@ __isl_give isl_aff *isl_aff_scale(__isl_take isl_aff *aff, isl_int f)
 	aff->v = isl_vec_cow(aff->v);
 	if (!aff->v)
 		return isl_aff_free(aff);
+
+	if (f->hehe[0]) {
+		isl_seq_scale(aff->v->el + 1, aff->v->el + 1, f, aff->v->size - 1);
+		isl_aff_dump(aff);
+		return aff;
+	}
 
 	if (isl_int_is_pos(f) && isl_int_is_divisible_by(aff->v->el[0], f)) {
 		isl_int_divexact(aff->v->el[0], aff->v->el[0], f);

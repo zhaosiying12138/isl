@@ -10876,12 +10876,8 @@ static int test_chambers(isl_ctx *ctx)
 
 static int test_paraexpr(isl_ctx *ctx)
 {
-	isl_basic_map *bset = isl_basic_map_read_from_str(ctx, "[M, N] -> { [i] -> [o] : o = N * i }");
-	isl_basic_map_dump(bset);
-	//isl_aff *aff = isl_aff_read_from_str(ctx, "{[i] -> [i % 4]}");
-	//isl_aff_dump(aff);
-
-
+	isl_basic_map *bset = isl_basic_map_read_from_str(ctx, "[M, N] -> { S[i, j] -> S[o] : o = M * i }");
+//	isl_basic_map_dump(bset);
 
 	return 0;
 }

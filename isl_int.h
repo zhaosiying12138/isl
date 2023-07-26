@@ -28,8 +28,8 @@
 #endif /* USE_SMALL_INT_OPT */
 #endif /* USE_IMATH_FOR_MP */
 
-#define isl_int_is_zero(i)	(isl_int_sgn(i) == 0)
-#define isl_int_is_one(i)	(isl_int_cmp_si(i,1) == 0)
+#define isl_int_is_zero(i)	(isl_int_sgn(i) == 0 && ((i)->hehe[0] == 0))
+#define isl_int_is_one(i)	(isl_int_cmp_si(i,1) == 0 && ((i)->hehe[0] == 0))
 #define isl_int_is_negone(i)	(isl_int_cmp_si(i,-1) == 0)
 #define isl_int_is_pos(i)	(isl_int_sgn(i) > 0)
 #define isl_int_is_neg(i)	(isl_int_sgn(i) < 0)

@@ -46,6 +46,8 @@ static __isl_give isl_printer *file_print_int(__isl_take isl_printer *p, int i)
 static __isl_give isl_printer *file_print_isl_int(__isl_take isl_printer *p, isl_int i)
 {
 	isl_int_print(p->file, i, p->width);
+	if (i->hehe[0])
+		fprintf(p->file, "%s", "*M*");
 	return p;
 }
 

@@ -1914,8 +1914,8 @@ __isl_give PW *FN(PW,mul_isl_int)(__isl_take PW *pw, isl_int v)
 	int i;
 	isl_size n;
 
-	if (isl_int_is_one(v))
-		return pw;
+	//if (isl_int_is_one(v))
+	//	return pw;
 	if (pw && DEFAULT_IS_ZERO && isl_int_is_zero(v)) {
 		PW *zero;
 		isl_space *space = FN(PW,get_space)(pw);

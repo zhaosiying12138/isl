@@ -8,12 +8,19 @@
  */
 typedef mpz_t	isl_int;
 
-#define isl_int_init(i)		mpz_init(i)
+static inline void isl_int_init(isl_int i)	{
+	mpz_init(i);
+	for (int idx = 0; idx < 5; idx++)
+		i->hehe[idx] = 0;
+}	
 #define isl_int_clear(i)	mpz_clear(i)
 
 #define isl_int_set(r,i)	mpz_set(r,i)
 #define isl_int_set_si(r,i)	mpz_set_si(r,i)
 #define isl_int_set_ui(r,i)	mpz_set_ui(r,i)
+static inline void isl_int_set_param(isl_int i, int pos, int val) {
+	i->hehe[pos] = val;
+}
 #define isl_int_fits_slong(r)	mpz_fits_slong_p(r)
 #define isl_int_get_si(r)	mpz_get_si(r)
 #define isl_int_fits_ulong(r)	mpz_fits_ulong_p(r)
@@ -27,9 +34,19 @@ typedef mpz_t	isl_int;
 #define isl_int_add_ui(r,i,j)	mpz_add_ui(r,i,j)
 #define isl_int_sub_ui(r,i,j)	mpz_sub_ui(r,i,j)
 
-#define isl_int_add(r,i,j)	mpz_add(r,i,j)
+
+static inline void isl_int_add(isl_int r, isl_int i, isl_int j) {
+	mpz_add(r,i,j);
+	for (int idx = 0; idx < 5; idx++)
+		r->hehe[idx] = i->hehe[idx] + j->hehe[idx];
+}	
 #define isl_int_sub(r,i,j)	mpz_sub(r,i,j)
-#define isl_int_mul(r,i,j)	mpz_mul(r,i,j)
+static inline void isl_int_mul(isl_int r, isl_int i, isl_int j) {
+	mpz_mul(r,i,j);
+	if (!(mpz_sgn(i) == 0 && i->hehe[0] == 0) && !(mpz_sgn(j) == 0 && j->hehe[0] == 0))
+		for (int idx = 0; idx < 5; idx++)
+			r->hehe[idx] = i->hehe[idx] + j->hehe[idx];
+}	
 #define isl_int_mul_2exp(r,i,j)	mpz_mul_2exp(r,i,j)
 #define isl_int_mul_si(r,i,j)	mpz_mul_si(r,i,j)
 #define isl_int_mul_ui(r,i,j)	mpz_mul_ui(r,i,j)

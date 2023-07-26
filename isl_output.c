@@ -301,9 +301,14 @@ static __isl_give isl_printer *print_term(__isl_keep isl_space *space,
 		return isl_printer_free(p);
 	print_div_def = type == isl_dim_div && can_print_div_expr(p, div, pos);
 
-	if (isl_int_is_one(c))
-		;
-	else if (isl_int_is_negone(c))
+	if (isl_int_is_one(c)) {
+		p = isl_printer_print_isl_int(p, c);
+		//if (p->output_format == ISL_FORMAT_C || print_div_def)
+			p = isl_printer_print_str(p, "*");
+		int tmp = c->hehe[0];
+		if (tmp)
+			p = isl_printer_print_str(p, "wodemaya");
+	} else if (isl_int_is_negone(c))
 		p = isl_printer_print_str(p, "-");
 	else {
 		p = isl_printer_print_isl_int(p, c);
@@ -2821,6 +2826,7 @@ static __isl_give isl_printer *print_aff(__isl_take isl_printer *p,
 	p = print_aff_body(p, aff->ls->dim, aff);
 	p = isl_printer_print_str(p, "]");
 
+
 	return p;
 }
 
@@ -2916,11 +2922,14 @@ static __isl_give isl_printer *print_ls_term_c(__isl_take isl_printer *p,
 	if (pos == 0)
 		return isl_printer_print_isl_int(p, c);
 
-	if (isl_int_is_one(c))
-		;
+	if (isl_int_is_one(c)) {
+		p = isl_printer_print_isl_int(p, c);
+		p = isl_printer_print_str(p, "*");
+	}
 	else if (isl_int_is_negone(c))
 		p = isl_printer_print_str(p, "-");
 	else {
+		printf("hehe****");
 		p = isl_printer_print_isl_int(p, c);
 		p = isl_printer_print_str(p, "*");
 	}
@@ -2980,6 +2989,7 @@ static __isl_give isl_printer *print_aff_c(__isl_take isl_printer *p,
 	if (!isl_int_is_one(aff->v->el[0]))
 		p = isl_printer_print_str(p, "(");
 	p = print_ls_partial_affine_c(p, aff->ls, aff->v->el + 1, 1 + total);
+	p = isl_printer_print_str(p, "[ZSY2]");
 	if (!isl_int_is_one(aff->v->el[0])) {
 		p = isl_printer_print_str(p, ")/");
 		p = isl_printer_print_isl_int(p, aff->v->el[0]);
