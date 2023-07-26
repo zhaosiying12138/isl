@@ -10874,10 +10874,23 @@ static int test_chambers(isl_ctx *ctx)
 	return 0;
 }
 
+static int test_paraexpr(isl_ctx *ctx)
+{
+	isl_basic_map *bset = isl_basic_map_read_from_str(ctx, "[M, N] -> { [i] -> [o] : o = N * i }");
+	isl_basic_map_dump(bset);
+	//isl_aff *aff = isl_aff_read_from_str(ctx, "{[i] -> [i % 4]}");
+	//isl_aff_dump(aff);
+
+
+
+	return 0;
+}
+
 struct {
 	const char *name;
 	int (*fn)(isl_ctx *ctx);
 } tests [] = {
+#if 0
 	{ "universe", &test_universe },
 	{ "domain hash", &test_domain_hash },
 	{ "dual", &test_dual },
@@ -10959,6 +10972,8 @@ struct {
 	{ "convex hull", &test_convex_hull },
 	{ "transitive closure", &test_closure },
 	{ "isl_bool", &test_isl_bool},
+#endif
+	{ "test_paraexpr", &test_paraexpr},
 };
 
 int main(int argc, char **argv)

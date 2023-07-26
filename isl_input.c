@@ -42,6 +42,7 @@ struct variable {
 struct vars {
 	struct isl_ctx	*ctx;
 	int		 n;
+	int      n_params;
 	struct variable	*v;
 };
 
@@ -160,7 +161,7 @@ static struct isl_token *next_token(__isl_keep isl_stream *s)
 		return tok;
 	tok2 = isl_stream_next_token(s);
 	if (!tok2 || tok2->type != ISL_TOKEN_VALUE) {
-		isl_stream_error(s, tok2, "expecting constant value");
+		isl_stream_error(s, tok2, "expecting constant value1");
 		goto error;
 	}
 
@@ -262,7 +263,7 @@ static isl_stat int_div_by_cst(__isl_keep isl_stream *s, isl_int *f)
 
 	tok = next_token(s);
 	if (!tok || tok->type != ISL_TOKEN_VALUE) {
-		isl_stream_error(s, tok, "expecting constant value");
+		isl_stream_error(s, tok, "expecting constant value2");
 		goto error;
 	}
 
@@ -282,7 +283,7 @@ static isl_stat accept_cst_factor(__isl_keep isl_stream *s, isl_int *f)
 
 	tok = next_token(s);
 	if (!tok || tok->type != ISL_TOKEN_VALUE) {
-		isl_stream_error(s, tok, "expecting constant value");
+		isl_stream_error(s, tok, "expecting constant value3");
 		goto error;
 	}
 
@@ -314,7 +315,7 @@ static __isl_give isl_pw_aff *affine_mod(__isl_keep isl_stream *s,
 
 	tok = next_token(s);
 	if (!tok || tok->type != ISL_TOKEN_VALUE) {
-		isl_stream_error(s, tok, "expecting constant value");
+		isl_stream_error(s, tok, "expecting constant value4");
 		goto error;
 	}
 
@@ -496,6 +497,7 @@ static __isl_give isl_pw_aff *accept_affine_factor(__isl_keep isl_stream *s,
 	} else if (tok->type == ISL_TOKEN_IDENT) {
 		int n = v->n;
 		int pos = vars_pos(v, tok->u.s, -1);
+		printf("pos = %d, v->n = %d, v->n_params = %d\n", pos, v->n, v->n_params);
 		isl_aff *aff;
 
 		if (pos < 0)
@@ -3097,6 +3099,7 @@ static struct isl_obj obj_read(__isl_keep isl_stream *s)
 	if (tok->type == '[') {
 		isl_stream_push_token(s, tok);
 		map = read_map_tuple(s, map, isl_dim_param, v, 0, 0);
+		v->n_params = v->n;
 		if (!map)
 			goto error;
 		tok = isl_stream_next_token(s);
@@ -3125,6 +3128,7 @@ static struct isl_obj obj_read(__isl_keep isl_stream *s)
 		if (isl_stream_eat(s, '='))
 			goto error;
 		map = read_map_tuple(s, map, isl_dim_param, v, 0, 1);
+		v->n_params = v->n;
 		if (!map)
 			goto error;
 	} else
@@ -3467,7 +3471,7 @@ static __isl_give isl_vec *isl_vec_read_polylib(__isl_keep isl_stream *s)
 	for (j = 0; j < size; ++j) {
 		tok = isl_stream_next_token(s);
 		if (!tok || tok->type != ISL_TOKEN_VALUE) {
-			isl_stream_error(s, tok, "expecting constant value");
+			isl_stream_error(s, tok, "expecting constant value5");
 			goto error;
 		}
 		isl_int_set(vec->el[j], tok->u.v);
