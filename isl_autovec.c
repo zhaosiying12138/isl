@@ -32,6 +32,114 @@
 #include <isl_ast_build_expr.h>
 #include <isl/options.h>
 
+#define STR_MAX 10
+
+struct zsy_dep_graph
+{
+	int n;
+	char **node_names;
+	int *edge;
+	int *visited;
+};
+
+static void zsy_dep_graph_init(struct zsy_dep_graph *dep_graph, isl_union_set *domain)
+{
+	int n = isl_union_set_n_set(domain);
+	dep_graph->n = n;
+	dep_graph->node_names = (char **)malloc(n * sizeof(char *));
+	dep_graph->edge = (int *)calloc(n * n, sizeof(int));
+	isl_map_list *domain_list = isl_union_set_get_set_list(domain);
+	for (int i = 0; i < n; i++) {
+		isl_set *tmp_set = isl_set_list_get_at(domain_list, i);
+		const char *tmp_name = isl_set_get_tuple_name(tmp_set);
+		dep_graph->node_names[i] = (char *)malloc(STR_MAX * sizeof(char));
+		strncpy(dep_graph->node_names[i], tmp_name, STR_MAX - 1);
+//		printf("%s\n", dep_graph->node_names[i]);
+	}
+	dep_graph->visited = (int *)calloc(n, sizeof(int));
+}
+
+static void zsy_dep_graph_clear_visited(struct zsy_dep_graph *dep_graph)
+{
+	for (int i = 0; i < dep_graph->n; i++) {
+		dep_graph->visited[i] = 0;
+	}
+}
+
+static int zsy_dep_graph_get_node_id(struct zsy_dep_graph *dep_graph, const char *node_name)
+{
+	for (int i = 0; i < dep_graph->n; i++) {
+		if (strncmp(dep_graph->node_names[i], node_name, STR_MAX - 1) == 0)
+			return i;
+	}
+	return -1;
+}
+
+static void zsy_dep_graph_add_edge(struct zsy_dep_graph *dep_graph, int id1, int id2)
+{
+	dep_graph->edge[id1 * dep_graph->n + id2] = 1;
+}
+
+static int zsy_dep_graph_check_edge(struct zsy_dep_graph *dep_graph, int id1, int id2)
+{
+	return dep_graph->edge[id1 * dep_graph->n + id2];
+}
+
+static void zsy_dep_graph_dump(struct zsy_dep_graph *dep_graph)
+{
+	printf("Dependece Graph Dump:\n");
+	for (int i = 0; i < dep_graph->n; i++) {
+		for (int j = 0; j < dep_graph->n; j++) {
+			if (zsy_dep_graph_check_edge(dep_graph, i, j)) {
+				printf("%s(%d) -> %s(%d)\n", dep_graph->node_names[i], i, dep_graph->node_names[j], j);
+			}
+		}
+	}
+}
+
+void zsy_compute_dep_graph(struct zsy_dep_graph *dep_graph, isl_union_set *domain, isl_union_map *dep_all)
+{
+	zsy_dep_graph_init(dep_graph, domain);
+
+	isl_map_list *map_list = isl_union_map_get_map_list(dep_all);
+	for (int i = 0; i < isl_map_list_n_map(map_list); i++) {
+		isl_map *tmp_map = isl_map_list_get_map(map_list, i);
+		const char *node_source_name = isl_map_get_tuple_name(tmp_map, isl_dim_in);
+		const char *node_sink_name = isl_map_get_tuple_name(tmp_map, isl_dim_out);
+		int source_id = zsy_dep_graph_get_node_id(dep_graph, node_source_name);
+		int sink_id = zsy_dep_graph_get_node_id(dep_graph, node_sink_name);
+		zsy_dep_graph_add_edge(dep_graph, source_id, sink_id);
+	}
+	printf("\n");
+	zsy_dep_graph_dump(dep_graph);
+}
+
+static int zsy_dep_graph_check_recurrence_call(struct zsy_dep_graph *dep_graph, int start_node_id)
+{
+	if (dep_graph->visited[start_node_id] == 1)
+		return 1;
+	dep_graph->visited[start_node_id] = 1;
+	for (int i = 0; i < dep_graph->n; i++) {
+		if (zsy_dep_graph_check_edge(dep_graph, start_node_id, i) == 1) {
+			//printf("Check %s -> %s\n", dep_graph->node_names[start_node_id], dep_graph->node_names[i]);
+			if (zsy_dep_graph_check_recurrence_call(dep_graph, i) == 1)
+				return 1;
+		}
+	}
+	dep_graph->visited[start_node_id] = 0;
+	return 0;
+}
+
+int zsy_dep_graph_check_recurrence(struct zsy_dep_graph *dep_graph)
+{
+	zsy_dep_graph_clear_visited(dep_graph);
+	for (int i = 0; i < dep_graph->n; i++) {
+		if (zsy_dep_graph_check_recurrence_call(dep_graph, i) == 1)
+			return 1;
+	}
+	return 0;
+}
+
 static int zsy_compute_max_common_loops(__isl_keep isl_basic_map *bmap, __isl_keep isl_union_map *S)
 {
 	isl_basic_set *bmap_domain = isl_basic_map_domain(isl_basic_map_copy(bmap));
@@ -124,7 +232,7 @@ int zsy_test_autovec(isl_ctx *ctx)
 	isl_set *CON;
 	isl_union_set *D, *delta;
 	isl_set *delta_set, *delta_set_lexmin, *delta_set_lexmax;
-	isl_union_map *W, *R, *W_rev, *R_rev, *S, *S_lt_S;
+	isl_union_map *W, *R, *W_rev, *R_rev, *S, *S_le_S, *S_lt_S;
 	isl_union_map *empty;
 	isl_union_map *dep_raw, *dep_war, *dep_waw, *dep;
 	isl_union_map *validity, *proximity, *coincidence;
@@ -159,9 +267,10 @@ int zsy_test_autovec(isl_ctx *ctx)
 
 	W_rev = isl_union_map_reverse(isl_union_map_copy(W));
 	R_rev = isl_union_map_reverse(isl_union_map_copy(R));
+	S_le_S = isl_union_map_lex_le_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
 	S_lt_S = isl_union_map_lex_lt_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
 	dep_raw = isl_union_map_apply_range(isl_union_map_copy(W), isl_union_map_copy(R_rev));
-	dep_raw = isl_union_map_intersect(dep_raw, isl_union_map_copy(S_lt_S));
+	dep_raw = isl_union_map_intersect(dep_raw, isl_union_map_copy(S_le_S));
 	dep_waw = isl_union_map_apply_range(isl_union_map_copy(W), isl_union_map_copy(W_rev));
 	dep_waw = isl_union_map_intersect(dep_waw, isl_union_map_copy(S_lt_S));
 	dep_war = isl_union_map_apply_range(isl_union_map_copy(R), isl_union_map_copy(W_rev));
@@ -176,10 +285,11 @@ int zsy_test_autovec(isl_ctx *ctx)
 	zsy_dump_dependence(dep_war, S);
 #endif
 
+#if 0
 	dep = isl_union_map_union(isl_union_map_copy(dep_waw), isl_union_map_copy(dep_war));
 	dep = isl_union_map_union(dep, isl_union_map_copy(dep_raw));
 
-#if 0
+
 	isl_basic_map *t_map = isl_basic_map_read_from_str(ctx, " [N] -> { S3[i, j, k] -> S2[i', j'] : (k = N and j' = 1 + j and N > 0 and N <= 100 and i > 0 and i <= 100 and j > 0 and j <= 99 and i' > 0 and i' <= 100 and i' > i) } ");
 	zsy_compute_loop_carried(t_map, S);
 	
@@ -189,7 +299,7 @@ int zsy_test_autovec(isl_ctx *ctx)
 
 	t_map = isl_basic_map_read_from_str(ctx, " [N] -> { S3[i, j, k] -> S4[i', j'] : (k = N and i' = i and j' = j and N > 0 and N <= 100 and i > 0 and i <= 100 and j > 0 and j <= 100) } ");
 	zsy_compute_loop_carried(t_map, S);
-#endif
+
 
 	validity = isl_union_map_copy(dep);
 	coincidence = isl_union_map_copy(dep);
@@ -209,7 +319,7 @@ int zsy_test_autovec(isl_ctx *ctx)
 //	tree = isl_ast_build_node_from_schedule_map(build, schedule);
 //	printf("After Transform:\n%s\n", isl_ast_node_to_C_str(tree));
 //	isl_ast_node_free(tree);
-
+#endif
 
 	return 0;
 }
@@ -387,6 +497,60 @@ int zsy_test_schedule_tree2(isl_ctx *ctx)
 	return 0;
 }
 
+int zsy_test_check_recurrence(isl_ctx *ctx)
+{
+	const char *d, *w, *r, *s;
+	isl_union_set *D, *delta;
+	isl_union_map *W, *R, *W_rev, *R_rev, *S, *S_le_S, *S_lt_S;
+	isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_all;
+	struct zsy_dep_graph dep_graph;
+#define SCALER_EXTENSION 1
+#if SCALER_EXTENSION
+	d = "[N] -> { S1[i] : 1 <= i <= N; S2[i] : 1 <= i <= N; S3[i] : 1 <= i <= N; }";
+	w = "[N] -> { S1[i] -> T[i]; S2[i] -> A[i]; S3[i] -> B[i]; }";
+	r = "[N] -> { S1[i] -> A[i]; S2[i] -> B[i]; S3[i] -> T[i]; }";
+	s = "[N] -> { S1[i] -> [0, i, 0]; S2[i] -> [0, i, 1]; S3[i] -> [0, i, 2]; }";
+#else
+	d = "[N] -> { S1[i] : 1 <= i <= N; S2[i] : 1 <= i <= N; S3[i] : 1 <= i <= N; }";
+	w = "[N] -> { S1[i] -> T[]; S2[i] -> A[i]; S3[i] -> B[i]; }";
+	r = "[N] -> { S1[i] -> A[i]; S2[i] -> B[i]; S3[i] -> T[]; }";
+	s = "[N] -> { S1[i] -> [0, i, 0]; S2[i] -> [0, i, 1]; S3[i] -> [0, i, 2]; }";
+#endif
+	D = isl_union_set_read_from_str(ctx, d);
+	W = isl_union_map_read_from_str(ctx, w);
+	R = isl_union_map_read_from_str(ctx, r);
+	S = isl_union_map_read_from_str(ctx, s);
+
+	W = isl_union_map_intersect_domain(W, isl_union_set_copy(D));
+	R = isl_union_map_intersect_domain(R, isl_union_set_copy(D));
+	S = isl_union_map_intersect_domain(S, isl_union_set_copy(D));
+
+	W_rev = isl_union_map_reverse(isl_union_map_copy(W));
+	R_rev = isl_union_map_reverse(isl_union_map_copy(R));
+	S_le_S = isl_union_map_lex_le_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
+	S_lt_S = isl_union_map_lex_lt_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
+	dep_raw = isl_union_map_apply_range(isl_union_map_copy(W), isl_union_map_copy(R_rev));
+	dep_raw = isl_union_map_intersect(dep_raw, isl_union_map_copy(S_le_S));
+	dep_waw = isl_union_map_apply_range(isl_union_map_copy(W), isl_union_map_copy(W_rev));
+	dep_waw = isl_union_map_intersect(dep_waw, isl_union_map_copy(S_lt_S));
+	dep_war = isl_union_map_apply_range(isl_union_map_copy(R), isl_union_map_copy(W_rev));
+	dep_war = isl_union_map_intersect(dep_war, isl_union_map_copy(S_lt_S));
+
+	printf("\nRAW Dependence:\n");
+	zsy_dump_dependence(dep_raw, S);
+	printf("\nWAW Dependence:\n");
+	zsy_dump_dependence(dep_waw, S);
+	printf("\nWAR Dependence:\n");
+	zsy_dump_dependence(dep_war, S);
+
+	dep_all = isl_union_map_union(isl_union_map_copy(dep_raw), isl_union_map_copy(dep_waw));
+	dep_all = isl_union_map_union(dep_all, dep_war);
+	zsy_compute_dep_graph(&dep_graph, D, dep_all);
+	int is_recurrence = zsy_dep_graph_check_recurrence(&dep_graph);
+	printf("Check Recurrence: %d\n", is_recurrence);
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -398,11 +562,12 @@ int main(int argc, char **argv)
 	argc = isl_options_parse(options, argc, argv, ISL_ARG_ALL);
 	ctx = isl_ctx_alloc_with_options(&isl_options_args, options);
 
-	printf("AutoVectorization written by zhaosiying12138@Institute of Advanced YanJia"
+	printf("Check Recurrence written by zhaosiying12138@Institute of Advanced YanJia"
 				" Technology, LiuYueCity Academy of Science\n");
 //	zsy_test_autovec(ctx);
-	zsy_test_schedule_tree1(ctx);
-	zsy_test_schedule_tree2(ctx);
+//	zsy_test_schedule_tree1(ctx);
+//	zsy_test_schedule_tree2(ctx);
+	zsy_test_check_recurrence(ctx);
 
 	isl_ctx_free(ctx);
 	return 0;
