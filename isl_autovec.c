@@ -267,14 +267,14 @@ int zsy_test_autovec(isl_ctx *ctx)
 
 	W_rev = isl_union_map_reverse(isl_union_map_copy(W));
 	R_rev = isl_union_map_reverse(isl_union_map_copy(R));
-	S_le_S = isl_union_map_lex_le_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
 	S_lt_S = isl_union_map_lex_lt_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
+	S_le_S = isl_union_map_lex_le_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
 	dep_raw = isl_union_map_apply_range(isl_union_map_copy(W), isl_union_map_copy(R_rev));
-	dep_raw = isl_union_map_intersect(dep_raw, isl_union_map_copy(S_le_S));
+	dep_raw = isl_union_map_intersect(dep_raw, isl_union_map_copy(S_lt_S));
 	dep_waw = isl_union_map_apply_range(isl_union_map_copy(W), isl_union_map_copy(W_rev));
 	dep_waw = isl_union_map_intersect(dep_waw, isl_union_map_copy(S_lt_S));
 	dep_war = isl_union_map_apply_range(isl_union_map_copy(R), isl_union_map_copy(W_rev));
-	dep_war = isl_union_map_intersect(dep_war, isl_union_map_copy(S_lt_S));
+	dep_war = isl_union_map_intersect(dep_war, isl_union_map_copy(S_le_S));
 
 #if 1
 	printf("\nRAW Dependence:\n");
@@ -527,14 +527,14 @@ int zsy_test_check_recurrence(isl_ctx *ctx)
 
 	W_rev = isl_union_map_reverse(isl_union_map_copy(W));
 	R_rev = isl_union_map_reverse(isl_union_map_copy(R));
-	S_le_S = isl_union_map_lex_le_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
 	S_lt_S = isl_union_map_lex_lt_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
+	S_le_S = isl_union_map_lex_le_union_map(isl_union_map_copy(S), isl_union_map_copy(S));
 	dep_raw = isl_union_map_apply_range(isl_union_map_copy(W), isl_union_map_copy(R_rev));
-	dep_raw = isl_union_map_intersect(dep_raw, isl_union_map_copy(S_le_S));
+	dep_raw = isl_union_map_intersect(dep_raw, isl_union_map_copy(S_lt_S));
 	dep_waw = isl_union_map_apply_range(isl_union_map_copy(W), isl_union_map_copy(W_rev));
 	dep_waw = isl_union_map_intersect(dep_waw, isl_union_map_copy(S_lt_S));
 	dep_war = isl_union_map_apply_range(isl_union_map_copy(R), isl_union_map_copy(W_rev));
-	dep_war = isl_union_map_intersect(dep_war, isl_union_map_copy(S_lt_S));
+	dep_war = isl_union_map_intersect(dep_war, isl_union_map_copy(S_le_S));
 
 	printf("\nRAW Dependence:\n");
 	zsy_dump_dependence(dep_raw, S);
