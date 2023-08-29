@@ -504,17 +504,17 @@ int zsy_test_check_recurrence(isl_ctx *ctx)
 	isl_union_map *W, *R, *W_rev, *R_rev, *S, *S_le_S, *S_lt_S;
 	isl_union_map *dep_raw, *dep_war, *dep_waw, *dep_all;
 	struct zsy_dep_graph dep_graph;
-#define SCALER_EXTENSION 1
+#define SCALER_EXTENSION 0
 #if SCALER_EXTENSION
 	d = "[N] -> { S1[i] : 1 <= i <= N; S2[i] : 1 <= i <= N; S3[i] : 1 <= i <= N; }";
-	w = "[N] -> { S1[i] -> T[i]; S2[i] -> A[i]; S3[i] -> B[i]; }";
-	r = "[N] -> { S1[i] -> A[i]; S2[i] -> B[i]; S3[i] -> T[i]; }";
+	w = "[N] -> { S1[i] -> A[i]; S2[i] -> Y[i]; S3[i] -> A[i]; }";
+	r = "[N] -> { S1[i] -> A[i - 1]; S1[i] -> X[]; S2[i] -> A[i]; S2[i] -> Z[]; S3[i] -> B[i]; S3[i] -> C[]; }";
 	s = "[N] -> { S1[i] -> [0, i, 0]; S2[i] -> [0, i, 1]; S3[i] -> [0, i, 2]; }";
 #else
-	d = "[N] -> { S1[i] : 1 <= i <= N; S2[i] : 1 <= i <= N; S3[i] : 1 <= i <= N; }";
-	w = "[N] -> { S1[i] -> T[]; S2[i] -> A[i]; S3[i] -> B[i]; }";
-	r = "[N] -> { S1[i] -> A[i]; S2[i] -> B[i]; S3[i] -> T[]; }";
-	s = "[N] -> { S1[i] -> [0, i, 0]; S2[i] -> [0, i, 1]; S3[i] -> [0, i, 2]; }";
+	d = "[N] -> { S1[i] : 1 <= i <= N }";
+	w = "[N] -> { S1[i] -> A[i]; }";
+	r = "[N] -> { S1[i] -> A[i]; }";
+	s = "[N] -> { S1[i] -> [0, i, 0] }";
 #endif
 	D = isl_union_set_read_from_str(ctx, d);
 	W = isl_union_map_read_from_str(ctx, w);
@@ -551,6 +551,95 @@ int zsy_test_check_recurrence(isl_ctx *ctx)
 	return 0;
 }
 
+__isl_give isl_pw_qpolynomial *zsy_isl_pw_qpolynomial_get_value_one_with_same_space(__isl_keep isl_pw_qpolynomial *pw_qp)
+{
+	isl_space *space = isl_pw_qpolynomial_get_domain_space(pw_qp);
+	return isl_pw_qpolynomial_from_qpolynomial(isl_qpolynomial_one_on_domain(space));
+}
+
+__isl_give isl_pw_qpolynomial *zsy_isl_pw_qpolynomial_substitute(
+	__isl_take isl_pw_qpolynomial *pw_qp,
+	enum isl_dim_type type, unsigned first, unsigned n,
+	__isl_keep isl_qpolynomial **subs)
+{
+	isl_qpolynomial *qp = isl_pw_qpolynomial_as_qpolynomial(pw_qp);
+	qp = isl_qpolynomial_substitute(qp, type, first, n, subs);
+	return isl_pw_qpolynomial_from_qpolynomial(qp);
+}
+
+int zsy_test_aff1(isl_ctx *ctx)
+{
+	isl_pw_qpolynomial *one;
+	isl_pw_qpolynomial *theta1 = isl_pw_qpolynomial_read_from_str(ctx,
+								"[u1_0, u1_1, u1_2] -> { theta[i, j, n] -> (u1_0 + u1_1 * i + u1_2 * (n - i)) }");
+	isl_pw_qpolynomial *theta2 = isl_pw_qpolynomial_read_from_str(ctx,
+		"[u2_0, u2_1, u2_2, u2_3, u2_4] -> { theta[i, j, n] ->"
+		" (u2_0 + u2_1 * i + u2_2 * (n - i) + u2_3 * j + u2_4 * (n - j)) }");
+	isl_pw_qpolynomial *result1 = isl_pw_qpolynomial_sub(isl_pw_qpolynomial_copy(theta2), isl_pw_qpolynomial_copy(theta1));
+	one = zsy_isl_pw_qpolynomial_get_value_one_with_same_space(result1);
+	result1 = isl_pw_qpolynomial_sub(result1, one);
+	isl_pw_qpolynomial *farkas1 = isl_pw_qpolynomial_read_from_str(ctx,
+		"[r1_0, r1_1, r1_2, r1_3, r1_4, r1_5] -> { theta[i, j, n] -> "
+		"(r1_0 + r1_1 * i + r1_2 * (n - i) + r1_3 * j + r1_4 * (n - j) - r1_5 * j) }");
+	result1 = isl_pw_qpolynomial_sub(result1, farkas1);
+	isl_pw_qpolynomial_dump(isl_pw_qpolynomial_coalesce(result1));
+
+	isl_qpolynomial *h2_0 = isl_pw_qpolynomial_as_qpolynomial(isl_pw_qpolynomial_read_from_str(ctx,
+								"[u2_0, u2_1, u2_2, u2_3, u2_4] -> { theta[i, j, n] -> (i) }"));
+	isl_qpolynomial *h2_1 = isl_pw_qpolynomial_as_qpolynomial(isl_pw_qpolynomial_read_from_str(ctx,
+								"[u2_0, u2_1, u2_2, u2_3, u2_4] -> { theta[i, j, n] -> (j - 1) }"));
+	isl_pw_qpolynomial *theta2_minus1 = zsy_isl_pw_qpolynomial_substitute(isl_pw_qpolynomial_copy(theta2),
+										isl_dim_in, 0, 1, &h2_0);
+	theta2_minus1 = zsy_isl_pw_qpolynomial_substitute(theta2_minus1, isl_dim_in, 1, 1, &h2_1);
+	isl_pw_qpolynomial *result2 = isl_pw_qpolynomial_sub(isl_pw_qpolynomial_copy(theta2), theta2_minus1);
+	one = zsy_isl_pw_qpolynomial_get_value_one_with_same_space(result2);
+	result2 = isl_pw_qpolynomial_sub(result2, one);
+	isl_pw_qpolynomial_dump(result2);
+}
+
+int zsy_test_aff2(isl_ctx *ctx)
+{
+	isl_pw_qpolynomial *one;
+	isl_pw_qpolynomial *theta1 = isl_pw_qpolynomial_read_from_str(ctx,
+		"[u0, u1, u2, u3, u4] -> { theta[i, j, n] -> (u0 + u1 * i + u2 * (n - i) + u3 * j + u4 * (i - j)) }");
+	isl_qpolynomial *h1_0 = isl_pw_qpolynomial_as_qpolynomial(isl_pw_qpolynomial_read_from_str(ctx,
+								"[u0, u1, u2, u3, u4] -> { theta[i, j, n] -> (i) }"));
+	isl_qpolynomial *h1_1 = isl_pw_qpolynomial_as_qpolynomial(isl_pw_qpolynomial_read_from_str(ctx,
+								"[u0, u1, u2, u3, u4] -> { theta[i, j, n] -> (j - 1) }"));
+	isl_pw_qpolynomial *theta1_dep1 = zsy_isl_pw_qpolynomial_substitute(isl_pw_qpolynomial_copy(theta1),
+										isl_dim_in, 0, 1, &h1_0);
+	theta1_dep1 = zsy_isl_pw_qpolynomial_substitute(theta1_dep1, isl_dim_in, 1, 1, &h1_1);
+	isl_pw_qpolynomial *result1 = isl_pw_qpolynomial_sub(isl_pw_qpolynomial_copy(theta1), theta1_dep1);
+	one = zsy_isl_pw_qpolynomial_get_value_one_with_same_space(result1);
+	result1 = isl_pw_qpolynomial_sub(result1, one);
+	isl_pw_qpolynomial_dump(result1);
+
+	isl_qpolynomial *h2_0_dst = isl_pw_qpolynomial_as_qpolynomial(isl_pw_qpolynomial_read_from_str(ctx,
+								"[u0, u1, u2, u3, u4] -> { theta[i, j, n] -> (i) }"));
+	isl_qpolynomial *h2_1_dst = isl_pw_qpolynomial_as_qpolynomial(isl_pw_qpolynomial_read_from_str(ctx,
+								"[u0, u1, u2, u3, u4] -> { theta[i, j, n] -> (0) }"));
+	isl_pw_qpolynomial *theta1_dep2_dst = zsy_isl_pw_qpolynomial_substitute(isl_pw_qpolynomial_copy(theta1),
+										isl_dim_in, 0, 1, &h2_0_dst);
+	theta1_dep2_dst = zsy_isl_pw_qpolynomial_substitute(theta1_dep2_dst, isl_dim_in, 1, 1, &h2_1_dst);
+	isl_pw_qpolynomial_dump(theta1_dep2_dst);
+	isl_qpolynomial *h2_0_src = isl_pw_qpolynomial_as_qpolynomial(isl_pw_qpolynomial_read_from_str(ctx,
+								"[u0, u1, u2, u3, u4] -> { theta[i, j, n] -> (i - 1) }"));
+	isl_qpolynomial *h2_1_src = isl_pw_qpolynomial_as_qpolynomial(isl_pw_qpolynomial_read_from_str(ctx,
+								"[u0, u1, u2, u3, u4] -> { theta[i, j, n] -> (i - 1) }"));
+	isl_pw_qpolynomial *theta1_dep2_src = zsy_isl_pw_qpolynomial_substitute(isl_pw_qpolynomial_copy(theta1),
+										isl_dim_in, 0, 1, &h2_0_src);
+	theta1_dep2_src = zsy_isl_pw_qpolynomial_substitute(theta1_dep2_src, isl_dim_in, 1, 1, &h2_1_src);
+	isl_pw_qpolynomial_dump(theta1_dep2_src);
+	isl_pw_qpolynomial *result2 = isl_pw_qpolynomial_sub(theta1_dep2_dst, theta1_dep2_src);
+	one = zsy_isl_pw_qpolynomial_get_value_one_with_same_space(result2);
+	result2 = isl_pw_qpolynomial_sub(result2, one);
+	isl_pw_qpolynomial *farkas1 = isl_pw_qpolynomial_read_from_str(ctx,
+		"[r0, r1, r2, r3, r4] -> { theta[i, j, n] -> "
+		"(r0 + r1 * (i - 1) + r2 * (n - i) + r3 * j - r4 * j) }");
+	result2 = isl_pw_qpolynomial_sub(result2, farkas1);
+	isl_pw_qpolynomial_dump(result2);
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -562,12 +651,14 @@ int main(int argc, char **argv)
 	argc = isl_options_parse(options, argc, argv, ISL_ARG_ALL);
 	ctx = isl_ctx_alloc_with_options(&isl_options_args, options);
 
-	printf("Check Recurrence written by zhaosiying12138@Institute of Advanced YanJia"
+	printf("Feautrier Demo written by zhaosiying12138@Institute of Advanced YanJia"
 				" Technology, LiuYueCity Academy of Science\n");
 //	zsy_test_autovec(ctx);
 //	zsy_test_schedule_tree1(ctx);
 //	zsy_test_schedule_tree2(ctx);
-	zsy_test_check_recurrence(ctx);
+//	zsy_test_check_recurrence(ctx);
+	zsy_test_aff1(ctx);
+	zsy_test_aff2(ctx);
 
 	isl_ctx_free(ctx);
 	return 0;
